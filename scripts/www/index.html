@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>ATP网球比分板 专业版</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='90' font-size='90'>🎾</text></svg>" sizes="any">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><text y='160' font-size='160'>🎾</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            touch-action: manipulation;
+        }
+
+        .setup {
+            background: #111;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .setup input {
+            width: 48%;
+            padding: 12px;
+            font-size: 20px;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+        }
+        .setup button {
+            margin-top: 15px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #ffd700;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .setup-btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .scoreboard {
+            background: #000;
+            display: none;
+        }
+        .player {
+            display: flex;
+            align-items: center;
+            height: 80px;
+            border-bottom: 1.5px solid #333;
+            position: relative;
+        }
+        .serve-dot {
+            width: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: none;
+            background: #ffd700;
+        }
+        .name {
+            width: 180px;
+            font-size: 32px;
+            font-weight: bold;
+            padding-left: 8px;
+        }
+        .sets {
+            display: flex;
+            height: 100%;
+        }
+        .set {
+            width: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+            position: relative;
+        }
+        .tiebreak-sup {
+            position: absolute; top: 14px; right: 4px;
+            font-size: 14px; color: #fff;
+        }
+        .current-set {
+            background: #ffd700; color: #000;
+        }
+        .past-set { color: #fff; }
+        .winner { color: #ffd700; }
+
+        .point-box {
+            width: 220px; height: 80px;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 10px;
+        }
+        .point-main {
+            font-size: 36px; font-weight: bold; color: #fff;
+            width: 80px; text-align: center;
+        }
+        .key-point {
+            flex-shrink: 0; width: 80px;
+            font-size: 18px; font-weight: bold; color: #ffd700;
+            opacity: 0; transition: opacity 0.3s ease;
+            padding: 4px 8px; background: rgba(0,0,0,0.85); border-radius: 4px;
+        }
+        .key-point.show { opacity: 1; }
+
+        .ctrl-wrap { margin-top: 30px; text-align: center; display: none; }
+        .ctrl-container {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 15px; margin-bottom: 20px;
+        }
+        .player-ctrl { width: 42%; padding: 12px; background: #111; border-radius: 8px; transition: opacity 0.2s; }
+        /* 禁用面板整体半透明提示（视觉增强） */
+        .player-ctrl.disabled-panel {
+            opacity: 0.6;
+        }
+        .ctrl-middle {
+            width: 16%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding-top: 30px; gap: 10px;
+        }
+        .ace-row-wrap {
+            display: flex; justify-content: center; align-items: center;
+            gap: 8px; margin-bottom: 10px;
+        }
+        .round-btn {
+            width: 46px; height: 46px; border-radius: 50%; border: none;
+            font-size: 24px; font-weight: bold; cursor: pointer;
+            touch-action: manipulation; display: flex;
+            align-items: center; justify-content: center; color: #fff; padding: 0;
+        }
+        .round-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .btn-w { background: #9333ea; }
+        .btn-ue { background: #38bdf8; }
+        .btn-ace {
+            background: #ff69b4; color: #fff;
+            width: 70px; height: 40px; padding: 0; font-size: 14px;
+            border: none; border-radius: 6px; font-weight: bold;
+            cursor: pointer; touch-action: manipulation;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-ace:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .btn-row { display: grid; grid-template-columns: repeat(3,1fr); gap:6px; }
+        .ctrl-btn {
+            width:50px; height:50px; padding:2px; font-size:14px; border:none;
+            border-radius:6px; font-weight:bold; cursor:pointer; touch-action: manipulation;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            margin:0 auto; line-height:1.2;
+        }
+        .ctrl-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .btn-green { background:#28a745; color:#fff; }
+        .btn-gray { background:#666666; color:#fff; }
+        .btn-red { background:#dc3434; color:#fff; }
+        .btn-undo {
+            width:70px; height:50px; background:#ff9800; color:#fff;
+            border-radius:6px; border:none; font-weight:bold; cursor:pointer;
+            font-size:20px; display:flex; align-items:center; justify-content:center; padding:0;
+        }
+        .stat-wrap {
+            width:80px; background:#1a1a1a; border-radius:6px; padding:8px 4px;
+        }
+        .stat-item {
+            font-size:13px; color:#ccc; line-height:1.6;
+            text-align:center; white-space:nowrap;
+            overflow:hidden; text-overflow:ellipsis;
+        }
+        .stat-name { color:#ffd700; font-weight:bold; font-size:13px; }
+
+        .sub-controls {
+            display:flex; gap:12px; justify-content:center;
+            margin-bottom:25px; flex-wrap:wrap;
+        }
+        .small-btn {
+            padding:12px 20px; font-size:16px; background:#333;
+            color:#fff; border:none; border-radius:6px; cursor:pointer; touch-action: manipulation;
+        }
+        .switch-mode-btn {
+            background: #ff9800;
+            color: #000;
+            font-weight: bold;
+        }
+        .stats-table {
+            margin-top:20px; width:100%; border-collapse:collapse;
+            background:#111; border-radius:8px; overflow:hidden;
+        }
+        .stats-table th,.stats-table td {
+            padding:12px; text-align:center; border:1px solid #333; font-size:16px;
+        }
+        .stats-table th { background:#222; color:#ffd700; }
+        .stats-table td { color:#fff; vertical-align:top; }
+        
+        /* 新增：禁止滑动的body样式 */
+        body.lock-scroll {
+            overflow: hidden;
+            height: 100vh;
+            touch-action: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 界面1：设置姓名面板 -->
+    <div class="setup" id="setupBox">
+        <input id="pA" placeholder="球员A" value="球员A">
+        <input id="pB" placeholder="球员B" value="球员B">
+        <div class="setup-btn-group">
+            <button onclick="startMatch()">开始比赛</button>
+            <button id="continueMatchBtn" style="display:none;" onclick="continueMatch()">继续比赛</button>
+        </div>
+    </div>
+
+    <!-- 界面2：比赛操控面板 -->
+    <div class="scoreboard" id="scoreboard">
+        <div class="player">
+            <div class="serve-dot"><div class="dot" id="dotA"></div></div>
+            <div class="name" id="nameA">球员A</div>
+            <div class="sets" id="setsA"></div>
+            <div class="point-box">
+                <div class="point-main" id="pointA">0</div>
+                <div class="key-point" id="keyPointA"></div>
+            </div>
+        </div>
+        <div class="player">
+            <div class="serve-dot"><div class="dot" id="dotB"></div></div>
+            <div class="name" id="nameB">球员B</div>
+            <div class="sets" id="setsB"></div>
+            <div class="point-box">
+                <div class="point-main" id="pointB">0</div>
+                <div class="key-point" id="keyPointB"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctrl-wrap" id="ctrlWrap">
+        <div class="ctrl-container">
+            <div class="player-ctrl" id="playerCtrlA">
+                <h4 id="ctrlTitleA">球员A 操作</h4>
+                <div class="ace-row-wrap">
+                    <button class="round-btn btn-w" onclick="addW('A')">W</button>
+                    <button class="btn-ace" onclick="firstServeAce('A')" id="firstAceA">一发ACE</button>
+                    <button class="btn-ace" onclick="secondServeAce('A')" id="secondAceA" disabled>二发ACE</button>
+                    <button class="round-btn btn-ue" onclick="addUE('A')">UE</button>
+                </div>
+                <div class="btn-row">
+                    <button class="ctrl-btn btn-gray" onclick="serveFault('A')">一发<br>失误</button>
+                    <button class="ctrl-btn btn-green" onclick="firstWin('A')">一发<br>得分</button>
+                    <button class="ctrl-btn btn-red" onclick="firstLose('A')">一发<br>丢分</button>
+                    <button class="ctrl-btn btn-gray" onclick="doubleFault('A')">双误</button>
+                    <button class="ctrl-btn btn-green" onclick="secondWin('A')">二发<br>得分</button>
+                    <button class="ctrl-btn btn-red" onclick="secondLose('A')">二发<br>丢分</button>
+                </div>
+            </div>
+
+            <div class="ctrl-middle">
+                <button class="btn-undo" onclick="undoStep()">撤销</button>
+                <div class="stat-wrap" id="statShow">
+                    <div class="stat-item stat-name">球员A</div>
+                    <div class="stat-item">W：0</div>
+                    <div class="stat-item">UE：0</div>
+                    <div style="margin:4px 0;border-bottom:1px solid #333;"></div>
+                    <div class="stat-item stat-name">球员B</div>
+                    <div class="stat-item">W：0</div>
+                    <div class="stat-item">UE：0</div>
+                </div>
+            </div>
+
+            <div class="player-ctrl" id="playerCtrlB">
+                <h4 id="ctrlTitleB">球员B 操作</h4>
+                <div class="ace-row-wrap">
+                    <button class="round-btn btn-w" onclick="addW('B')">W</button>
+                    <button class="btn-ace" onclick="firstServeAce('B')" id="firstAceB">一发ACE</button>
+                    <button class="btn-ace" onclick="secondServeAce('B')" id="secondAceB" disabled>二发ACE</button>
+                    <button class="round-btn btn-ue" onclick="addUE('B')">UE</button>
+                </div>
+                <div class="btn-row">
+                    <button class="ctrl-btn btn-gray" onclick="serveFault('B')">一发<br>失误</button>
+                    <button class="ctrl-btn btn-green" onclick="firstWin('B')">一发<br>得分</button>
+                    <button class="ctrl-btn btn-red" onclick="firstLose('B')">一发<br>丢分</button>
+                    <button class="ctrl-btn btn-gray" onclick="doubleFault('B')">双误</button>
+                    <button class="ctrl-btn btn-green" onclick="secondWin('B')">二发<br>得分</button>
+                    <button class="ctrl-btn btn-red" onclick="secondLose('B')">二发<br>丢分</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sub-controls">
+            <button class="small-btn" onclick="switchServer()">切换发球方</button>
+            <button class="small-btn" onclick="resetGameOnly()">重置本局</button>
+            <button onclick="enterTiebreak()" class="small-btn">进入抢七(6:6)</button>
+            <button class="small-btn" onclick="resetAllMatch()">整场重新开始</button>
+            <!-- 切换界面按钮放在“整场重新开始”右边 -->
+            <button class="small-btn switch-mode-btn" id="switchToSetupBtn" style="display:none;" onclick="switchToSetup()">✏️ 切换设置界面</button>
+            <!-- 新增锁屏按钮 -->
+            <button class="small-btn" id="lockScreenBtn" onclick="toggleLockScreen()">🔒 锁屏</button>
+        </div>
+        
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>统计项</th>
+                    <th id="statsHeaderA">球员A</th>
+                    <th id="statsHeaderB">球员B</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>ACE</td>
+                    <td id="aceCountA">0<br><small>一发：<span id="firstAceCountA">0</span> 二发：<span id="secondAceCountA">0</span></small></td>
+                    <td id="aceCountB">0<br><small>一发：<span id="firstAceCountB">0</span> 二发：<span id="secondAceCountB">0</span></small></td>
+                </tr>
+                <tr>
+                    <td>双误</td>
+                    <td id="doubleFaultCountA">0</td>
+                    <td id="doubleFaultCountB">0</td>
+                </tr>
+                <tr>
+                    <td>制胜分</td>
+                    <td id="winnerCountA">0</td>
+                    <td id="winnerCountB">0</td>
+                </tr>
+                <tr>
+                    <td>非受迫失误</td>
+                    <td id="ueCountA">0</td>
+                    <td id="ueCountB">0</td>
+                </tr>
+                <tr>
+                    <td>一发进球率</td>
+                    <td id="firstInRateA">0%</td>
+                    <td id="firstInRateB">0%</td>
+                </tr>
+                <tr>
+                    <td>一发得分率</td>
+                    <td id="firstWinRateA">0%</td>
+                    <td id="firstWinRateB">0%</td>
+                </tr>
+                <tr>
+                    <td>二发得分率</td>
+                    <td id="secondWinRateA">0%</td>
+                    <td id="secondWinRateB">0%</td>
+                </tr>
+                <tr>
+                    <td>发球局胜率</td>
+                    <td id="sgRateA">0%</td>
+                    <td id="sgRateB">0%</td>
+                </tr>
+                <tr>
+                    <td>破发点</td>
+                    <td id="breakPointRateA">0%</td>
+                    <td id="breakPointRateB">0%</td>
+                </tr>
+                <tr>
+                    <td>总得分/占比</td>
+                    <td id="setPointsA">0</td>
+                    <td id="setPointsB">0</td>
+                </tr>
+                <tr>
+                    <td>双方合计总得分</td>
+                    <td colspan="2" id="totalAllPoints">0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+<script>
+const pointMap = [0,15,30,40];
+
+let wA=0,wB=0;
+let ueA=0,ueB=0;
+let firstWinA=0,firstWinB=0;
+let firstLoseA=0,firstLoseB=0;
+let secondWinA=0,secondWinB=0;
+let secondLoseA=0,secondLoseB=0;
+
+let pA=0,pB=0;
+let gA=0,gB=0;
+let server='A';
+let setList=[];
+let tieA=0,tieB=0;
+let inTie=false;
+let snap=null;
+
+let playerAName='球员A';
+let playerBName='球员B';
+
+let serviceGames=[];
+let breakCountA=0,breakCountB=0;
+let breakPointTotalA=0,breakPointTotalB=0;
+let lastCalcBreakPoint=0;
+
+let setScores=[];
+let currentSetPointsA=0,currentSetPointsB=0;
+
+let serveFaultCountA=0,serveFaultCountB=0;
+let aceCountA=0,aceCountB=0;
+let firstAceCountA=0,firstAceCountB=0;
+let secondAceCountA=0,secondAceCountB=0;
+let doubleFaultCountA=0,doubleFaultCountB=0;
+
+// 发球阶段状态
+let servePhaseA = 1;
+let servePhaseB = 1;
+
+// 抢七专用
+let tiePointNum = 0;
+let tiebreakFirstReceiver = null;
+let lastSetLastGameServer = null;
+
+let matchStarted = false;
+
+// 新增：锁屏状态标识
+let isScreenLocked = false;
+
+// ========= 新增：根据发球方锁定操作面板 =========
+function syncPanelsByServer() {
+    const panelA = document.getElementById('playerCtrlA');
+    const panelB = document.getElementById('playerCtrlB');
+    if (!panelA || !panelB) return;
+    
+    const isServerA = (server === 'A');
+    // 获取面板内所有可点击按钮（排除全局影响，只限制计分相关）
+    const btnsA = panelA.querySelectorAll('button');
+    const btnsB = panelB.querySelectorAll('button');
+    
+    // 设置disabled属性
+    btnsA.forEach(btn => btn.disabled = !isServerA);
+    btnsB.forEach(btn => btn.disabled = isServerA);
+    
+    // 添加/移除视觉样式（半透明提示）
+    if (isServerA) {
+        panelA.classList.remove('disabled-panel');
+        panelB.classList.add('disabled-panel');
+    } else {
+        panelB.classList.remove('disabled-panel');
+        panelA.classList.add('disabled-panel');
+    }
+    
+    // 在启用面板的基础上，再针对ACE按钮的发球阶段细化（一发/二发限制）
+    updateAceButtonStatus();
+}
+
+// 刷新ACE按钮状态（兼容原逻辑，且只对未禁用的面板生效，但禁用的面板按钮本来就是disabled，无影响）
+function updateAceButtonStatus() {
+    const isServerA = (server === 'A');
+    // 一发ACE、二发ACE 额外根据 servePhase 决定是否可用
+    const firstAceA = document.getElementById('firstAceA');
+    const secondAceA = document.getElementById('secondAceA');
+    const firstAceB = document.getElementById('firstAceB');
+    const secondAceB = document.getElementById('secondAceB');
+    
+    if (firstAceA) {
+        // 只有当前发球方是A时才考虑启用一发二发规则
+        if (isServerA) {
+            firstAceA.disabled = (servePhaseA !== 1);
+            secondAceA.disabled = (servePhaseA !== 2);
+        } else {
+            firstAceA.disabled = true;
+            secondAceA.disabled = true;
+        }
+    }
+    if (firstAceB) {
+        if (!isServerA) {
+            firstAceB.disabled = (servePhaseB !== 1);
+            secondAceB.disabled = (servePhaseB !== 2);
+        } else {
+            firstAceB.disabled = true;
+            secondAceB.disabled = true;
+        }
+    }
+}
+
+// 重置发球阶段（并且同步面板状态）
+function resetServePhase(who = null) {
+    if (who === 'A' || who === null) servePhaseA = 1;
+    if (who === 'B' || who === null) servePhaseB = 1;
+    syncPanelsByServer(); // 刷新面板启用/禁用以及ACE状态
+}
+
+// 刷新侧边统计
+function refreshStatShow() {
+    let statDiv = document.getElementById('statShow');
+    if(statDiv) {
+        statDiv.innerHTML = `
+            <div class="stat-item stat-name">${playerAName}</div>
+            <div class="stat-item">W：${wA}</div>
+            <div class="stat-item">UE：${ueA}</div>
+            <div style="margin:4px 0;border-bottom:1px solid #333;"></div>
+            <div class="stat-item stat-name">${playerBName}</div>
+            <div class="stat-item">W：${wB}</div>
+            <div class="stat-item">UE：${ueB}</div>
+        `;
+    }
+}
+
+// 保存快照
+function saveSnap(){
+    snap={
+        wA,wB,ueA,ueB,firstWinA,firstWinB,firstLoseA,firstLoseB,
+        secondWinA,secondWinB,secondLoseA,secondLoseB,
+        pA,pB,gA,gB,server,inTie,tieA,tieB,
+        setList:JSON.parse(JSON.stringify(setList)),
+        serviceGames:JSON.parse(JSON.stringify(serviceGames)),
+        breakCountA,breakCountB,breakPointTotalA,breakPointTotalB,lastCalcBreakPoint,
+        setScores:JSON.parse(JSON.stringify(setScores)),currentSetPointsA,currentSetPointsB,
+        serveFaultCountA,serveFaultCountB,aceCountA,aceCountB,
+        firstAceCountA,firstAceCountB,secondAceCountA,secondAceCountB,
+        doubleFaultCountA,doubleFaultCountB,
+        servePhaseA,servePhaseB,
+        tiePointNum,
+        tiebreakFirstReceiver,
+        lastSetLastGameServer
+    };
+}
+
+// 新增：锁屏/解锁切换函数
+function toggleLockScreen() {
+    isScreenLocked = !isScreenLocked;
+    const lockBtn = document.getElementById('lockScreenBtn');
+    const body = document.body;
+    
+    if (isScreenLocked) {
+        // 锁屏：禁止页面滑动
+        body.classList.add('lock-scroll');
+        lockBtn.innerHTML = '🔓 解锁';
+    } else {
+        // 解锁：恢复页面滑动
+        body.classList.remove('lock-scroll');
+        lockBtn.innerHTML = '🔒 锁屏';
+    }
+}
+
+function undoStep(){
+    if(!snap)return;
+    wA=snap.wA;wB=snap.wB;ueA=snap.ueA;ueB=snap.ueB;
+    firstWinA=snap.firstWinA;firstWinB=snap.firstWinB;firstLoseA=snap.firstLoseA;firstLoseB=snap.firstLoseB;
+    secondWinA=snap.secondWinA;secondWinB=snap.secondWinB;secondLoseA=snap.secondLoseA;secondLoseB=snap.secondLoseB;
+    pA=snap.pA;pB=snap.pB;gA=snap.gA;gB=snap.gB;server=snap.server;inTie=snap.inTie;tieA=snap.tieA;tieB=snap.tieB;
+    setList=snap.setList;serviceGames=snap.serviceGames;breakCountA=snap.breakCountA;breakCountB=snap.breakCountB;
+    breakPointTotalA=snap.breakPointTotalA;breakPointTotalB=snap.breakPointTotalB;lastCalcBreakPoint=snap.lastCalcBreakPoint;
+    setScores=snap.setScores;currentSetPointsA=snap.currentSetPointsA;currentSetPointsB=snap.currentSetPointsB;
+    serveFaultCountA=snap.serveFaultCountA;serveFaultCountB=snap.serveFaultCountB;
+    aceCountA=snap.aceCountA;aceCountB=snap.aceCountB;
+    firstAceCountA=snap.firstAceCountA;firstAceCountB=snap.firstAceCountB;
+    secondAceCountA=snap.secondAceCountA;secondAceCountB=snap.secondAceCountB;
+    doubleFaultCountA=snap.doubleFaultCountA;doubleFaultCountB=snap.doubleFaultCountB;
+    servePhaseA=snap.servePhaseA;servePhaseB=snap.servePhaseB;
+    tiePointNum=snap.tiePointNum;
+    tiebreakFirstReceiver = snap.tiebreakFirstReceiver;
+    lastSetLastGameServer = snap.lastSetLastGameServer;
+    
+    renderBoard();
+    updateStats();
+    refreshStatShow();
+    syncPanelsByServer();  // 撤销后同步面板禁用状态
+}
+
+function startMatch(){
+    resetAllMatchCore();
+    playerAName = document.getElementById('pA').value || '球员A';
+    playerBName = document.getElementById('pB').value || '球员B';
+    refreshAllNamesUI();
+    
+    document.getElementById('setupBox').style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'block';
+    document.getElementById('ctrlWrap').style.display = 'block';
+    
+    const continueBtn = document.getElementById('continueMatchBtn');
+    if(continueBtn) continueBtn.style.display = 'none';
+    const switchBtn = document.getElementById('switchToSetupBtn');
+    if(switchBtn) switchBtn.style.display = 'inline-block';
+    
+    matchStarted = true;
+    renderBoard();
+    updateStats();
+    refreshStatShow();
+    syncPanelsByServer();  // 根据发球方锁定面板
+}
+
+function continueMatch() {
+    if(!matchStarted) return;
+    let newNameA = document.getElementById('pA').value.trim();
+    let newNameB = document.getElementById('pB').value.trim();
+    if(newNameA === "") newNameA = "球员A";
+    if(newNameB === "") newNameB = "球员B";
+    playerAName = newNameA;
+    playerBName = newNameB;
+    refreshAllNamesUI();
+    renderBoard();
+    updateStats();
+    refreshStatShow();
+    document.getElementById('setupBox').style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'block';
+    document.getElementById('ctrlWrap').style.display = 'block';
+    const continueBtn = document.getElementById('continueMatchBtn');
+    if(continueBtn) continueBtn.style.display = 'none';
+    const switchBtn = document.getElementById('switchToSetupBtn');
+    if(switchBtn) switchBtn.style.display = 'inline-block';
+    syncPanelsByServer();
+}
+
+function switchToSetup() {
+    if(!matchStarted) return;
+    document.getElementById('scoreboard').style.display = 'none';
+    document.getElementById('ctrlWrap').style.display = 'none';
+    document.getElementById('setupBox').style.display = 'block';
+    document.getElementById('pA').value = playerAName;
+    document.getElementById('pB').value = playerBName;
+    const continueBtn = document.getElementById('continueMatchBtn');
+    if(continueBtn) continueBtn.style.display = 'inline-block';
+}
+
+function refreshAllNamesUI() {
+    document.getElementById('nameA').innerText = playerAName;
+    document.getElementById('nameB').innerText = playerBName;
+    document.getElementById('statsHeaderA').innerText = playerAName;
+    document.getElementById('statsHeaderB').innerText = playerBName;
+    document.getElementById('ctrlTitleA').innerText = playerAName + ' 操作';
+    document.getElementById('ctrlTitleB').innerText = playerBName + ' 操作';
+    refreshStatShow();
+}
+
+function resetAllMatchCore() {
+    wA=0;wB=0;ueA=0;ueB=0;
+    firstWinA=0;firstWinB=0;firstLoseA=0;firstLoseB=0;
+    secondWinA=0;secondWinB=0;secondLoseA=0;secondLoseB=0;
+    pA=0;pB=0;gA=0;gB=0;server='A';
+    setList=[];tieA=0;tieB=0;inTie=false;snap=null;
+    serviceGames=[];breakCountA=0;breakCountB=0;
+    breakPointTotalA=0;breakPointTotalB=0;lastCalcBreakPoint=0;
+    setScores=[];currentSetPointsA=0;currentSetPointsB=0;
+    serveFaultCountA=0;serveFaultCountB=0;
+    aceCountA=0;aceCountB=0;
+    firstAceCountA=0;firstAceCountB=0;
+    secondAceCountA=0;secondAceCountB=0;
+    doubleFaultCountA=0;doubleFaultCountB=0;
+    servePhaseA=1; servePhaseB=1;
+    tiePointNum = 0;
+    tiebreakFirstReceiver = null;
+    lastSetLastGameServer = null;
+    resetPointData();
+}
+
+function resetAllMatch(){
+    saveSnap();
+    resetAllMatchCore();
+    renderBoard();
+    updateStats();
+    refreshStatShow();
+    syncPanelsByServer();
+}
+
+function resetGameOnly(){
+    saveSnap();
+    inTie = false;
+    tieA=0; tieB=0;
+    tiePointNum = 0;
+    lastCalcBreakPoint=0;
+    resetPointData();
+    resetServePhase();
+    renderBoard();
+    updateStats();
+    syncPanelsByServer();
+}
+
+function switchServer(){
+    saveSnap();
+    server = server === 'A' ? 'B' : 'A';
+    resetServePhase(null); // 换发球方后重置双方发球阶段为一发，并同步面板
+    renderBoard();
+}
+
+function swapServer(){
+    server = server === 'A' ? 'B' : 'A';
+    syncPanelsByServer();
+}
+
+// 以下为得分相关函数，保留原逻辑 + 增加快照，但发球方控制已在UI层面禁用
+function firstServeAce(who) { saveSnap(); if(who==='A'){firstAceCountA++;aceCountA++;firstWinA++;} else {firstAceCountB++;aceCountB++;firstWinB++;} addPointDirect(who); resetServePhase(who); renderBoard(); updateStats(); refreshStatShow(); }
+function secondServeAce(who) { if ((who === 'A' && servePhaseA !== 2) || (who === 'B' && servePhaseB !== 2)) return; saveSnap(); if(who==='A'){secondAceCountA++;aceCountA++;secondWinA++;} else {secondAceCountB++;aceCountB++;secondWinB++;} addPointDirect(who); resetServePhase(who); renderBoard(); updateStats(); refreshStatShow(); }
+function serveFault(who){ saveSnap(); who==='A'?serveFaultCountA++:serveFaultCountB++; if(who==='A') servePhaseA=2; else servePhaseB=2; syncPanelsByServer(); renderBoard(); updateStats(); }
+function firstWin(who){ saveSnap(); who==='A'?firstWinA++:firstWinB++; resetServePhase(who); addPointDirect(who); }
+function firstLose(who){ saveSnap(); who==='A'?firstLoseA++:firstLoseB++; resetServePhase(who); let opp=who==='A'?'B':'A'; addPointDirect(opp); }
+function doubleFault(who){ saveSnap(); who==='A'?doubleFaultCountA++:doubleFaultCountB++; resetServePhase(who); let opp=who==='A'?'B':'A'; addPointDirect(opp); }
+function secondWin(who){ saveSnap(); who==='A'?secondWinA++:secondWinB++; resetServePhase(who); addPointDirect(who); }
+function secondLose(who){ saveSnap(); who==='A'?secondLoseA++:secondLoseB++; resetServePhase(who); let opp=who==='A'?'B':'A'; addPointDirect(opp); }
+function addW(who){ saveSnap(); who==='A'?wA++:wB++; refreshStatShow(); updateStats(); }
+function addUE(who){ saveSnap(); who==='A'?ueA++:ueB++; refreshStatShow(); updateStats(); }
+
+function enterTiebreak(){
+    saveSnap();
+    inTie = true;
+    tieA = 0; tieB = 0;
+    tiePointNum = 0;
+    const tiebreakFirstServer = server === 'A' ? 'B' : 'A';
+    tiebreakFirstReceiver = tiebreakFirstServer === 'A' ? 'B' : 'A';
+    server = tiebreakFirstServer;
+    renderBoard();
+    syncPanelsByServer();
+}
+
+function autoTieServeAndSide(){
+    if(!inTie) return;
+    tiePointNum++;
+    if(tiePointNum === 1) server = server === 'A' ? 'B' : 'A';
+    else if(tiePointNum > 1 && (tiePointNum - 1) % 2 === 0) server = server === 'A' ? 'B' : 'A';
+    syncPanelsByServer();
+}
+
+function addPointDirect(who){
+    if(!inTie){
+        who === 'A' ? pA++ : pB++;
+        checkBreakPointRule();
+        checkGameWin();
+    }else{
+        who === 'A' ? tieA++ : tieB++;
+        autoTieServeAndSide();
+        checkTiebreak();
+    }
+    who === 'A' ? currentSetPointsA++ : currentSetPointsB++;
+    renderBoard();
+    updateStats();
+}
+
+function checkGameWin(){
+    let gameWinner = null;
+    if(pA >=4 && pA - pB >=2){ gameWinner = 'A'; gA++; }
+    else if(pB >=4 && pB - pA >=2){ gameWinner = 'B'; gB++; }
+    if(gameWinner){
+        lastSetLastGameServer = server;
+        serviceGames.push({server:server, winner:gameWinner});
+        if(gameWinner !== server) gameWinner==='A' ? breakCountA++ : breakCountB++;
+        swapServer();
+        resetPointData();
+        lastCalcBreakPoint = 0;
+        resetServePhase();
+        checkSetWin();
+        syncPanelsByServer();
+    }
+}
+
+function handleSetServeRule(){
+    const lastSet = setList[setList.length - 1];
+    if(lastSet && (lastSet.ta > 0 || lastSet.tb > 0)){
+        server = tiebreakFirstReceiver ? tiebreakFirstReceiver : (server === 'A' ? 'B' : 'A');
+    } else {
+        server = lastSetLastGameServer === 'A' ? 'B' : 'A';
+    }
+    tiebreakFirstReceiver = null;
+    lastSetLastGameServer = null;
+    syncPanelsByServer();
+}
+
+function checkSetWin(){
+    if( (gA>=6 && gA-gB>=2) || (gB>=6 && gB-gA>=2) ){
+        setScores.push({a:currentSetPointsA, b:currentSetPointsB});
+        setList.push({a:gA, b:gB, ta:0, tb:0});
+        handleSetServeRule();
+        gA=0; gB=0;
+        resetPointData();
+        inTie = false;
+        tieA=0; tieB=0;
+        currentSetPointsA=0; currentSetPointsB=0;
+        tiePointNum = 0;
+        resetServePhase();
+    }
+    else if(gA ===6 && gB ===6){
+        inTie = true;
+        tieA=0; tieB=0;
+        syncPanelsByServer();
+    }
+}
+
+function checkTiebreak(){
+    if( (tieA>=7 && tieA-tieB>=2) || (tieB>=7 && tieB-tieA>=2) ){
+        let tieWinner = tieA>tieB ? 'A' : 'B';
+        tieWinner==='A' ? gA++ : gB++;
+        lastSetLastGameServer = server;
+        serviceGames.push({server:server, winner:tieWinner});
+        if(tieWinner !== server) tieWinner==='A' ? breakCountA++ : breakCountB++;
+        setScores.push({a:currentSetPointsA, b:currentSetPointsB});
+        setList.push({a:gA, b:gB, ta:tieA, tb:tieB});
+        handleSetServeRule();
+        gA=0; gB=0;
+        resetPointData();
+        inTie = false;
+        tieA=0; tieB=0;
+        currentSetPointsA=0; currentSetPointsB=0;
+        tiePointNum = 0;
+        resetServePhase();
+    }
+}
+
+function getCurrentBreakPointNum(who){ /* 原样保留，不赘述 */ 
+    if(inTie)return 0;
+    let s = server;
+    let receiver = who;
+    let pS = s==='A' ? pA : pB;
+    let pR = receiver==='A' ? pA : pB;
+    if(pS === 0 && pR === 3) return 3;
+    if(pS === 1 && pR === 3) return 2;
+    if(pS === 2 && pR === 3) return 1;
+    if(pS >=3 && pR >=3 && pR > pS) return 1;
+    return 0;
+}
+function checkBreakPointRule(){
+    let receiver = server==='A' ? 'B' : 'A';
+    let num = getCurrentBreakPointNum(receiver);
+    if(num > lastCalcBreakPoint){
+        let add = num - lastCalcBreakPoint;
+        receiver==='A' ? breakPointTotalA+=add : breakPointTotalB+=add;
+    }
+    lastCalcBreakPoint = num;
+}
+function resetPointData(){ pA=0; pB=0; }
+
+function renderBoard(){
+    document.getElementById('dotA').style.display = server==='A' ? 'block' : 'none';
+    document.getElementById('dotB').style.display = server==='B' ? 'block' : 'none';
+    let htmlA='',htmlB='';
+    for(let i=0;i<setList.length;i++){
+        let s=setList[i];
+        let wa = s.a > s.b, wb = s.b > s.a;
+        let supA = s.ta ? `<sup class="tiebreak-sup">${s.ta}</sup>` : '';
+        let supB = s.tb ? `<sup class="tiebreak-sup">${s.tb}</sup>` : '';
+        htmlA+=`<div class="set past-set ${wa?'winner':''}">${s.a}${supA}</div>`;
+        htmlB+=`<div class="set past-set ${wb?'winner':''}">${s.b}${supB}</div>`;
+    }
+    htmlA+=`<div class="set current-set">${gA}</div>`;
+    htmlB+=`<div class="set current-set">${gB}</div>`;
+    document.getElementById('setsA').innerHTML = htmlA;
+    document.getElementById('setsB').innerHTML = htmlB;
+    if(inTie){
+        document.getElementById('pointA').innerText = tieA;
+        document.getElementById('pointB').innerText = tieB;
+    }else{
+        document.getElementById('pointA').innerText = getPointStr(pA,pB);
+        document.getElementById('pointB').innerText = getPointStr(pB,pA);
+    }
+    let keyPoint = getKeyPoint();
+    let keyPointA = document.getElementById('keyPointA');
+    let keyPointB = document.getElementById('keyPointB');
+    keyPointA.classList.remove('show');
+    keyPointB.classList.remove('show');
+    if(keyPoint.side && keyPoint.text){
+        if(keyPoint.side === 'A'){ keyPointA.innerText = keyPoint.text; keyPointA.classList.add('show'); }
+        else{ keyPointB.innerText = keyPoint.text; keyPointB.classList.add('show'); }
+    }
+    syncPanelsByServer();
+}
+function getPointStr(self,opp){ if(self <4) return pointMap[self]; if(self === opp) return '40'; if(self - opp ===1) return 'AD'; return '40'; }
+function getKeyPoint(){ /* 原样保留 逻辑完全一致 */ let keyPoint={side:'',text:''};
+    if(inTie){ if(tieA>=6 && tieA-tieB>=1){ keyPoint.side='A'; keyPoint.text = setList.length>=1 ? '赛点' : '盘点'; } else if(tieB>=6 && tieB-tieA>=1){ keyPoint.side='B'; keyPoint.text = setList.length>=1 ? '赛点' : '盘点'; } return keyPoint; }
+    if(pA>=3 && pB>=3){ if(pA>pB) keyPoint.side='A'; else if(pB>pA) keyPoint.side='B'; else return keyPoint; } else if(pA===3 && pB<3) keyPoint.side='A'; else if(pB===3 && pA<3) keyPoint.side='B'; else return keyPoint;
+    let isBreak = keyPoint.side !== server; let setNeed = setList.length >=1;
+    if( (keyPoint.side==='A' && gA===5 && gB<5) || (keyPoint.side==='B' && gB===5 && gA<5) ) keyPoint.text = setNeed ? '赛点' : '盘点';
+    else if(isBreak) keyPoint.text = '破发点'; else keyPoint.text = '局点';
+    return keyPoint;
+}
+function updateStats(){ /* 原样保留，所有统计逻辑不变 */
+    document.getElementById('aceCountA').innerHTML = `${aceCountA}<br><small>一发：<span>${firstAceCountA}</span> 二发：<span>${secondAceCountA}</span></small>`;
+    document.getElementById('aceCountB').innerHTML = `${aceCountB}<br><small>一发：<span>${firstAceCountB}</span> 二发：<span>${secondAceCountB}</span></small>`;
+    document.getElementById('doubleFaultCountA').innerText=doubleFaultCountA;
+    document.getElementById('doubleFaultCountB').innerText=doubleFaultCountB;
+    document.getElementById('winnerCountA').innerText=wA;
+    document.getElementById('winnerCountB').innerText=wB;
+    document.getElementById('ueCountA').innerText=ueA;
+    document.getElementById('ueCountB').innerText=ueB;
+    let firstAceA = firstAceCountA, firstTotalA = firstWinA + firstLoseA + firstAceA + serveFaultCountA;
+    let firstInSuccessA = firstWinA + firstLoseA + firstAceA;
+    let firstInRateA = firstTotalA > 0 ? Math.round((firstInSuccessA / firstTotalA) * 100) : 0;
+    let firstWinRateA = firstInSuccessA > 0 ? Math.round(((firstWinA + firstAceA) / firstInSuccessA) * 100) : 0;
+    let firstAceB = firstAceCountB, firstTotalB = firstWinB + firstLoseB + firstAceB + serveFaultCountB;
+    let firstInSuccessB = firstWinB + firstLoseB + firstAceB;
+    let firstInRateB = firstTotalB > 0 ? Math.round((firstInSuccessB / firstTotalB) * 100) : 0;
+    let firstWinRateB = firstInSuccessB > 0 ? Math.round(((firstWinB + firstAceB) / firstInSuccessB) * 100) : 0;
+    let secondAceA = secondAceCountA, secondTotalA = secondWinA + secondAceA + secondLoseA + doubleFaultCountA;
+    let secondWinRateA = secondTotalA > 0 ? Math.round(((secondWinA + secondAceA) / secondTotalA) * 100) : 0;
+    let secondAceB = secondAceCountB, secondTotalB = secondWinB + secondAceB + secondLoseB + doubleFaultCountB;
+    let secondWinRateB = secondTotalB > 0 ? Math.round(((secondWinB + secondAceB) / secondTotalB) * 100) : 0;
+    document.getElementById('firstInRateA').innerText = `${firstInRateA}%`;
+    document.getElementById('firstInRateB').innerText = `${firstInRateB}%`;
+    document.getElementById('firstWinRateA').innerText = `${firstWinRateA}%`;
+    document.getElementById('firstWinRateB').innerText = `${firstWinRateB}%`;
+    document.getElementById('secondWinRateA').innerText = `${secondWinRateA}%`;
+    document.getElementById('secondWinRateB').innerText = `${secondWinRateB}%`;
+    let sgTotalA=serviceGames.filter(item=>item.server==='A').length;
+    let sgWinA=serviceGames.filter(item=>item.server==='A'&&item.winner==='A').length;
+    let sgRateA=sgTotalA>0?Math.round((sgWinA/sgTotalA)*100):0;
+    let sgTotalB=serviceGames.filter(item=>item.server==='B').length;
+    let sgWinB=serviceGames.filter(item=>item.server==='B'&&item.winner==='B').length;
+    let sgRateB=sgTotalB>0?Math.round((sgWinB/sgTotalB)*100):0;
+    let bpRateA=breakPointTotalA>0?Math.round((breakCountA/breakPointTotalA)*100):0;
+    let bpRateB=breakPointTotalB>0?Math.round((breakCountB/breakPointTotalB)*100):0;
+    let allSetScores=[...setScores];
+    if(currentSetPointsA>0||currentSetPointsB>0)allSetScores.push({a:currentSetPointsA,b:currentSetPointsB});
+    let totalPointsA=0,totalPointsB=0;
+    let setScoreHtmlA='',setScoreHtmlB='';
+    allSetScores.forEach((set,idx)=>{ totalPointsA+=set.a; totalPointsB+=set.b; let totalSet=set.a+set.b; let rateA=totalSet>0?Math.round((set.a/totalSet)*100):0; let rateB=totalSet>0?Math.round((set.b/totalSet)*100):0; setScoreHtmlA+=`第${idx+1}盘：${set.a} (${rateA}%)<br>`; setScoreHtmlB+=`第${idx+1}盘：${set.b} (${rateB}%)<br>`; });
+    let totalAllPoints=totalPointsA+totalPointsB; let totalRateA=totalAllPoints>0?Math.round((totalPointsA/totalAllPoints)*100):0; let totalRateB=totalAllPoints>0?Math.round((totalPointsB/totalAllPoints)*100):0;
+    setScoreHtmlA+=`总得分：${totalPointsA} (${totalRateA}%)`; setScoreHtmlB+=`总得分：${totalPointsB} (${totalRateB}%)`;
+    document.getElementById('sgRateA').innerHTML=`${sgRateA}% (${sgWinA}/${sgTotalA})`; document.getElementById('sgRateB').innerHTML=`${sgRateB}% (${sgWinB}/${sgTotalB})`;
+    document.getElementById('breakPointRateA').innerHTML=`${bpRateA}% (${breakCountA}/${breakPointTotalA})`; document.getElementById('breakPointRateB').innerHTML=`${bpRateB}% (${breakCountB}/${breakPointTotalB})`;
+    document.getElementById('setPointsA').innerHTML=setScoreHtmlA; document.getElementById('setPointsB').innerHTML=setScoreHtmlB; document.getElementById('totalAllPoints').innerText=totalAllPoints;
+}
+</script>
+</body>
+</html>
